@@ -16,7 +16,7 @@ export const registerParticipant = async (req, res) => {
 
     const qrToken = `${eventId}-${email}-${Date.now()}`;
     const qrCode = await QRCode.toDataURL(qrToken);
-    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const registration = await Registration.create({
       eventId,
@@ -24,6 +24,7 @@ export const registerParticipant = async (req, res) => {
       participantEmail: email,
       walletAddress,
       qrToken,
+      qrCode,
       tokenExpiry: expiry,
       used: false,
     });
@@ -32,7 +33,7 @@ export const registerParticipant = async (req, res) => {
 
     res.status(201).json({
       message: "Registered successfully",
-      qrCode,
+      qrCode: registration.qrCode,
     });
   } catch (err) {
     console.error("❌ Registration failed:", err);
@@ -40,7 +41,7 @@ export const registerParticipant = async (req, res) => {
   }
 };
 
-// ✅ Get all registrations by event
+// ✅ Admin View: Get all registrations by event
 export const getRegistrationsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -50,23 +51,29 @@ export const getRegistrationsByEvent = async (req, res) => {
 
     const registrations = await Registration.find({ eventId }).lean();
 
-    // ✅ For each registration, include a ready-to-display QR image
-    const participants = await Promise.all(
-      registrations.map(async (r) => {
-        const qrCodeData = await QRCode.toDataURL(r.qrToken);
-        return {
-          name: r.participantName,
-          email: r.participantEmail,
-          walletAddress: r.walletAddress || "",
-          attended: r.used || false,
-          qrCode: qrCodeData, // base64 QR image
-        };
-      })
-    );
+    const participants = registrations.map((r) => ({
+      name: r.participantName,
+      email: r.participantEmail,
+      walletAddress: r.walletAddress || "",
+      attended: r.used || false,
+      qrCode: r.qrCode,
+    }));
 
     res.json({ eventId, participants });
   } catch (err) {
     console.error("❌ Fetch failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ Dynamic count for frontend
+export const getRegistrationCount = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const count = await Registration.countDocuments({ eventId });
+    res.json({ count });
+  } catch (err) {
+    console.error("❌ Count failed:", err);
     res.status(500).json({ error: err.message });
   }
 };

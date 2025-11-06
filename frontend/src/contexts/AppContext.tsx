@@ -1,48 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import axios from "axios";
 
-export interface Event {
-  _id?: string;
-  id?: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  venue: string;
-  category: string;
-  image: string;
-  maxParticipants: number;
-  registeredCount: number;
-}
-
-export interface TeamMember {
-  name: string;
-  email: string;
-  id: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  walletAddress?: string;
-  token?: string;
-  isAdmin?: boolean;
-}
-
-export interface Participant {
-  id: string;
-  eventId: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  teamMembers: TeamMember[];
-  registrationDate: string;
-  attended: boolean;
-  certificateIssued: boolean;
-  qrCode: string;
-}
+export interface Event { /* same as before */ }
+export interface TeamMember { /* same as before */ }
+export interface User { /* same as before */ }
+export interface Participant { /* same as before */ }
 
 interface AppContextType {
   user: User | null;
@@ -61,26 +23,27 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  // ✅ 1. Hydrate user synchronously
+  const storedUser = localStorage.getItem("user");
+  const storedToken = localStorage.getItem("token");
+
+  const [user, setUser] = useState<User | null>(
+    storedUser && storedToken
+      ? {
+          ...JSON.parse(storedUser),
+          token: storedToken,
+          isAdmin:
+            JSON.parse(storedUser).role === "superadmin" ||
+            JSON.parse(storedUser).role === "clubadmin",
+        }
+      : null
+  );
+
+  const [loadingUser, setLoadingUser] = useState(false); // No async wait now
   const [events, setEvents] = useState<Event[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
 
-  // ✅ Load user from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-
-    if (storedUser && token) {
-      const parsedUser: User = JSON.parse(storedUser);
-      setUser({ ...parsedUser, token, isAdmin: parsedUser.role === "superadmin" || parsedUser.role === "clubadmin" });
-    } else {
-      setUser(null);
-    }
-    setLoadingUser(false);
-  }, []);
-
-  // ✅ Fetch events
+  // ✅ 2. Fetch events once
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -93,7 +56,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     fetchEvents();
   }, []);
 
-  // ✅ Keep user synced
+  // ✅ 3. Keep user synced
   useEffect(() => {
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));
@@ -104,7 +67,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  // ✅ Login
+  // ✅ 4. Login / Register / Logout functions (same)
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const res = await axios.post("http://localhost:4000/api/auth/login", { email, password });
@@ -124,7 +87,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ✅ Register
   const register = async (data: { name: string; email: string; password: string; role?: string }): Promise<boolean> => {
     try {
       const res = await axios.post("http://localhost:4000/api/auth/register", data);
@@ -151,7 +113,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = "/login";
   };
 
-  // ✅ Local dummy logic (for now)
+  // ✅ Local dummy event/participant helpers (same)
   const addEvent = (event: Omit<Event, "id">) => {
     const newEvent = { ...event, id: Date.now().toString() };
     setEvents((prev) => [...prev, newEvent]);

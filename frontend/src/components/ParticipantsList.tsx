@@ -4,7 +4,14 @@ import { motion } from "motion/react";
 import { ArrowLeft, Users, Eye, Award, ShieldCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
 import { Badge } from "./ui/badge";
 import axios from "axios";
 import { QRDisplay } from "./QRDisplay";
@@ -12,6 +19,7 @@ import { QRDisplay } from "./QRDisplay";
 export function ParticipantsList() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
+
   const [event, setEvent] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,14 +28,18 @@ export function ParticipantsList() {
   const [minting, setMinting] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
+  // ✅ Fetch event + participants
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [eventRes, regRes] = await Promise.all([
           axios.get(`http://localhost:4000/api/events/${eventId}`),
-          axios.get(`http://localhost:4000/api/registrations/event/${eventId}`, {
-            headers: { "x-admin-token": import.meta.env.VITE_ADMIN_TOKEN },
-          }),
+          axios.get(
+            `http://localhost:4000/api/registrations/event/${eventId}`,
+            {
+              headers: { "x-admin-token": import.meta.env.VITE_ADMIN_TOKEN },
+            }
+          ),
         ]);
         setEvent(eventRes.data);
         setParticipants(regRes.data.participants || []);
@@ -40,18 +52,17 @@ export function ParticipantsList() {
     fetchData();
   }, [eventId]);
 
-  // ✅ Mint certificates for this event
+  // ✅ Mint certificates
   const handleMintCertificates = async () => {
     try {
       setMinting(true);
-      const token = localStorage.getItem("token");
       const res = await axios.post(
-  "http://localhost:4000/api/certificates/mint",
-  { eventId },
-  {
-    headers: { "x-admin-token": import.meta.env.VITE_ADMIN_TOKEN },
-  }
-);
+        "http://localhost:4000/api/certificates/mint",
+        { eventId },
+        {
+          headers: { "x-admin-token": import.meta.env.VITE_ADMIN_TOKEN },
+        }
+      );
 
       alert(` ${res.data.message || "Certificates issued successfully!"}`);
       console.log("Mint results:", res.data.results);
@@ -63,12 +74,14 @@ export function ParticipantsList() {
     }
   };
 
-  // ✅ Verify minted certificates
+  // ✅ Verify certificates
   const handleVerifyCertificates = async () => {
     try {
       setVerifying(true);
       const res = await axios.get("http://localhost:4000/api/certificates");
-      const eventCerts = res.data.filter((c: any) => c.eventId?._id === eventId);
+      const eventCerts = res.data.filter(
+        (c: any) => c.eventId?._id === eventId
+      );
       alert(`✅ Verified ${eventCerts.length} certificates on blockchain`);
       console.log("Verified certs:", eventCerts);
     } catch (err: any) {
@@ -79,6 +92,7 @@ export function ParticipantsList() {
     }
   };
 
+  // ✅ Loading State
   if (loading)
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-gray-600">
@@ -87,6 +101,7 @@ export function ParticipantsList() {
       </div>
     );
 
+  // ✅ Event not found
   if (!event)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600">
@@ -95,12 +110,18 @@ export function ParticipantsList() {
       </div>
     );
 
+  // ✅ Main render
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-16">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="mr-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/admin")}
+            className="mr-4"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
           <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -111,7 +132,9 @@ export function ParticipantsList() {
 
       {/* Controls */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
-        <h2 className="text-2xl font-semibold text-gray-800">Participants List</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">
+          Participants List
+        </h2>
         <div className="flex space-x-3">
           <Button
             size="sm"
@@ -134,7 +157,7 @@ export function ParticipantsList() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Participants Table */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <Card className="bg-white/70 backdrop-blur-sm border-white/20">
           <CardHeader>
@@ -185,8 +208,12 @@ export function ParticipantsList() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setSelectedQR(p.qrToken);
-                            setShowQR(true);
+                            if (p.qrCode) {
+                              setSelectedQR(p.qrCode); // ✅ Use stored QR image
+                              setShowQR(true);
+                            } else {
+                              alert("No QR available for this participant.");
+                            }
                           }}
                         >
                           <Eye className="w-4 h-4 mr-2" /> View QR
@@ -203,7 +230,11 @@ export function ParticipantsList() {
 
       {/* QR Modal */}
       {showQR && (
-        <QRDisplay qrCode={selectedQR} eventTitle={event.title} onClose={() => setShowQR(false)} />
+        <QRDisplay
+          qrCode={selectedQR}
+          eventTitle={event.title}
+          onClose={() => setShowQR(false)}
+        />
       )}
     </div>
   );

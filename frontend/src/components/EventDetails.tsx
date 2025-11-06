@@ -1,139 +1,203 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
-import { motion } from 'motion/react';
-import { Calendar, MapPin, Users, Clock, ArrowLeft, UserPlus } from 'lucide-react';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Card, CardContent, CardHeader } from './ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { useApp } from '../contexts/AppContext';
-import { QRDisplay } from './QRDisplay';
-import { TeamMember } from '../contexts/AppContext';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import axios from "axios";
+import { motion } from "motion/react";
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
+  ArrowLeft,
+  UserPlus,
+  Ticket,
+} from "lucide-react";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Card, CardContent, CardHeader } from "./ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,  // ✅ add this line
+} from "./ui/dialog";
+
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { useApp } from "../contexts/AppContext";
+import { TeamMember } from "../contexts/AppContext";
 
 export function EventDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { events, user } = useApp();
+  const { user } = useApp();
 
   const [showRegistration, setShowRegistration] = useState(false);
   const [teamSize, setTeamSize] = useState(1);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [qrCode, setQrCode] = useState<string>('');
-  const [showQR, setShowQR] = useState(false);
+  const [qrCode, setQrCode] = useState<string>("");
+  const [showTicket, setShowTicket] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [event, setEvent] = useState<any>(null);
 
-  // ✅ Find event by _id or id
-  const event = events.find(e => e._id === id || e.id === id);
+  // ✅ Fetch event initially
+  const fetchEvent = async () => {
+    try {
+      const res = await axios.get(`http://localhost:4000/api/events/${id}`);
+      setEvent(res.data);
+    } catch (err) {
+      console.error("❌ Failed to load event:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvent();
+  }, [id]);
+
+  // 🔄 Auto-refresh event count every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchEvent, 10000);
+    return () => clearInterval(interval);
+  }, [id]);
+
+  // ✅ Check if user is already registered
+  useEffect(() => {
+  const checkRegistration = async () => {
+    const token = localStorage.getItem("token");
+
+    // 🧠 Wait until user is hydrated & token exists
+    if (!user || !id || !token || token === "undefined" || token === "null") {
+      if (process.env.NODE_ENV === "development") {
+  console.log("Skipping registration check: missing user or token");
+}
+
+      return;
+    }
+
+    try {
+      const res = await axios.get(
+        `http://localhost:4000/api/events/check/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (res.data.registered) {
+        setIsRegistered(true);
+        setQrCode(res.data.qrCode);
+      }
+    } catch (err) {
+      console.error("❌ Failed to check registration:", err);
+    }
+  };
+
+  checkRegistration();
+}, [user, id]);
+
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl mb-4">Event not found</h2>
-          <Link to="/">
-            <Button>Back to Events</Button>
-          </Link>
-        </div>
+      <div className="min-h-screen flex items-center justify-center text-gray-700">
+        <p>Loading event details...</p>
       </div>
     );
   }
 
-  // 🟢 Helper: category color
   const getCategoryColor = (category: string) => {
     const colors = {
-      Technology: 'bg-blue-500',
-      Cultural: 'bg-purple-500',
-      Business: 'bg-green-500',
-      Sports: 'bg-orange-500',
-      Academic: 'bg-indigo-500'
+      Technology: "bg-blue-500",
+      Cultural: "bg-purple-500",
+      Business: "bg-green-500",
+      Sports: "bg-orange-500",
+      Academic: "bg-indigo-500",
     };
-    return colors[category as keyof typeof colors] || 'bg-gray-500';
+    return colors[category as keyof typeof colors] || "bg-gray-500";
   };
 
-  // 🟢 Handle registration popup
   const handleRegister = () => {
     if (!user) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
     setShowRegistration(true);
   };
 
-  // 🟢 Manage team size & member info
   const handleTeamSizeChange = (size: number) => {
     setTeamSize(size);
     if (size === 1) {
       setTeamMembers([]);
     } else {
-      const members = Array(size - 1).fill(null).map(() => ({
-        name: '',
-        email: '',
-        id: ''
-      }));
+      const members = Array(size - 1)
+        .fill(null)
+        .map(() => ({
+          name: "",
+          email: "",
+          id: "",
+        }));
       setTeamMembers(members);
     }
   };
 
-  const updateTeamMember = (index: number, field: keyof TeamMember, value: string) => {
+  const updateTeamMember = (
+    index: number,
+    field: keyof TeamMember,
+    value: string
+  ) => {
     const updated = [...teamMembers];
     updated[index] = { ...updated[index], [field]: value };
     setTeamMembers(updated);
   };
 
-  // ✅ Submit registration to backend
-const submitRegistration = async () => {
-  if (!user) {
-    navigate("/login");
-    return;
-  }
+  const submitRegistration = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
 
-    const token = localStorage.getItem("token");
-    const eventId = event._id || event.id;
+      const payload = {
+        teamMembers: teamMembers.map((m) => ({
+          name: m.name,
+          email: m.email,
+          id: m.id,
+        })),
+      };
 
-    // ✅ Only send event and team data — backend will get user info from JWT
-const payload = {
-  teamMembers: teamMembers.map(m => ({
-    name: m.name,
-    email: m.email,
-    id: m.id,
-  })),
-};
+      const response = await axios.post(
+        `http://localhost:4000/api/events/${id}/register`,
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
+      setQrCode(response.data.qrCode);
+      setIsRegistered(true);
+      setShowRegistration(false);
+      setShowTicket(true);
 
-    console.log("📦 Sending registration payload:", payload);
-
-    const response = await axios.post(
-      `http://localhost:4000/api/events/${eventId}/register`,
-      payload,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // ✅ Send token so backend gets user info
-        },
-      }
-    );
-
-    console.log("✅ Registration success:", response.data);
-    setQrCode(response.data.qrCode);
-    setShowRegistration(false);
-    setShowQR(true);
-  } catch (err: any) {
-    console.error("❌ Registration failed:", err.response?.data || err.message);
-    alert(err.response?.data?.error || "Registration failed. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
-
+      // 🔄 Refresh count right after registering
+      await fetchEvent();
+    } catch (err: any) {
+      console.error("❌ Registration failed:", err.response?.data || err.message);
+      alert(
+        err.response?.data?.error || "Registration failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const isFormValid = teamMembers.every(
-    member => member.name.trim() && member.email.trim() && member.id.trim()
+    (member) => member.name.trim() && member.email.trim() && member.id.trim()
   );
 
   return (
@@ -165,7 +229,7 @@ const payload = {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
-          {/* Main Event Info */}
+          {/* Event Info */}
           <div className="lg:col-span-2">
             <div className="relative mb-8 rounded-2xl overflow-hidden">
               <img
@@ -174,7 +238,11 @@ const payload = {
                 className="w-full h-64 lg:h-80 object-cover"
               />
               <div className="absolute top-4 left-4">
-                <Badge className={`${getCategoryColor(event.category)} text-white border-0 text-sm`}>
+                <Badge
+                  className={`${getCategoryColor(
+                    event.category
+                  )} text-white border-0 text-sm`}
+                >
                   {event.category}
                 </Badge>
               </div>
@@ -185,8 +253,12 @@ const payload = {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <h1 className="text-3xl lg:text-4xl mb-6 text-gray-800">{event.title}</h1>
-              <p className="text-gray-600 text-lg leading-relaxed mb-8">{event.description}</p>
+              <h1 className="text-3xl lg:text-4xl mb-6 text-gray-800">
+                {event.title}
+              </h1>
+              <p className="text-gray-600 text-lg leading-relaxed mb-8">
+                {event.description}
+              </p>
 
               <div className="prose prose-gray max-w-none">
                 <h3>What to Expect</h3>
@@ -214,16 +286,14 @@ const payload = {
               <CardContent className="space-y-4">
                 <div className="flex items-start space-x-3">
                   <Calendar className="w-5 h-5 text-blue-500 mt-1" />
-                  <div>
-                    <p className="text-gray-800">
-                      {new Date(event.date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
+                  <p className="text-gray-800">
+                    {new Date(event.date).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
                 </div>
 
                 <div className="flex items-start space-x-3">
@@ -238,30 +308,59 @@ const payload = {
 
                 <div className="flex items-start space-x-3">
                   <Users className="w-5 h-5 text-orange-500 mt-1" />
-                  <div>
-                    <p className="text-gray-800">
+                  <div className="w-full">
+                    <motion.p
+                      key={event.registeredCount}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-gray-800"
+                    >
                       {event.registeredCount} / {event.maxParticipants} registered
-                    </p>
+                    </motion.p>
                     <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all"
                         style={{
-                          width: `${(event.registeredCount / event.maxParticipants) * 100}%`,
+                          width: `${(event.registeredCount /
+                            event.maxParticipants) *
+                            100
+                            }%`,
                         }}
                       ></div>
                     </div>
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleRegister}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 mt-6"
-                  disabled={event.registeredCount >= event.maxParticipants || loading}
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  {loading ? 'Registering...' :
-                    event.registeredCount >= event.maxParticipants ? 'Event Full' : 'Register Now'}
-                </Button>
+                {!isRegistered ? (
+                  <Button
+                    onClick={handleRegister}
+                    disabled={
+                      loading || event.registeredCount >= event.maxParticipants
+                    }
+                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 mt-6"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    {loading
+                      ? "Registering..."
+                      : event.registeredCount >= event.maxParticipants
+                        ? "Event Full"
+                        : "Register Now"}
+                  </Button>
+                ) : (
+                  <div className="flex flex-col gap-3 mt-6">
+                    <Button disabled className="bg-green-500 text-white w-full">
+                      ✅ Registered
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowTicket(true)}
+                      className="w-full"
+                    >
+                      <Ticket className="w-4 h-4 mr-2" /> View My Ticket
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -284,7 +383,9 @@ const payload = {
                 min="1"
                 max="10"
                 value={teamSize}
-                onChange={e => handleTeamSizeChange(parseInt(e.target.value) || 1)}
+                onChange={(e) =>
+                  handleTeamSizeChange(parseInt(e.target.value) || 1)
+                }
                 className="mt-1"
               />
             </div>
@@ -297,30 +398,33 @@ const payload = {
                     <h5 className="mb-3">Member {index + 2}</h5>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor={`name-${index}`}>Name</Label>
+                        <Label>Name</Label>
                         <Input
-                          id={`name-${index}`}
                           value={member.name}
-                          onChange={e => updateTeamMember(index, 'name', e.target.value)}
+                          onChange={(e) =>
+                            updateTeamMember(index, "name", e.target.value)
+                          }
                           placeholder="Full name"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`email-${index}`}>Email</Label>
+                        <Label>Email</Label>
                         <Input
-                          id={`email-${index}`}
                           type="email"
                           value={member.email}
-                          onChange={e => updateTeamMember(index, 'email', e.target.value)}
+                          onChange={(e) =>
+                            updateTeamMember(index, "email", e.target.value)
+                          }
                           placeholder="email@college.edu"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`id-${index}`}>Student ID</Label>
+                        <Label>Student ID</Label>
                         <Input
-                          id={`id-${index}`}
                           value={member.id}
-                          onChange={e => updateTeamMember(index, 'id', e.target.value)}
+                          onChange={(e) =>
+                            updateTeamMember(index, "id", e.target.value)
+                          }
                           placeholder="Student ID"
                         />
                       </div>
@@ -343,21 +447,99 @@ const payload = {
                 disabled={loading || (teamSize > 1 && !isFormValid)}
                 className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
               >
-                {loading ? 'Processing...' : 'Complete Registration'}
+                {loading ? "Processing..." : "Complete Registration"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* QR Code Display */}
-      {showQR && (
-        <QRDisplay
-          qrCode={qrCode}
-          eventTitle={event.title}
-          onClose={() => setShowQR(false)}
-        />
-      )}
+      {/* 🎟️ Fancy Ticket Modal */}
+      <Dialog open={showTicket} onOpenChange={setShowTicket}>
+  <DialogContent className="max-w-md p-0 overflow-hidden border-0 bg-transparent shadow-2xl">
+    <VisuallyHidden>
+      <DialogTitle>{event.title} Ticket</DialogTitle>
+      <DialogDescription>Your event ticket and details</DialogDescription>
+    </VisuallyHidden>
+
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 200 }}
+      className="relative"
+    >
+      <div className="relative bg-white rounded-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-700 p-6 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-12 translate-x-12"></div>
+          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-8 -translate-x-8"></div>
+
+          <div className="relative z-10 text-center">
+            <h2 className="text-2xl font-bold mb-2">{event.title}</h2>
+            <div className="flex items-center justify-center space-x-4 text-sm opacity-90">
+              <div className="flex items-center space-x-1">
+                <Calendar className="w-4 h-4" />
+                <span>{new Date(event.date).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Clock className="w-4 h-4" />
+                <span>{event.time}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative h-4 bg-gradient-to-b from-gray-100 to-white">
+          <div className="absolute -top-2 left-0 right-0 flex justify-between px-4">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="w-2 h-2 bg-gray-300 rounded-full"></div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="grid grid-cols-3 gap-6">
+            <div className="col-span-1 flex flex-col items-center">
+              <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
+                <img src={qrCode} alt="QR Code" className="w-24 h-24" />
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">Scan for entry</p>
+            </div>
+
+            <div className="col-span-2 space-y-3">
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Attendee</p>
+                <p className="font-semibold text-gray-800">{user?.name}</p>
+                <p className="text-sm text-gray-600">{user?.email}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Venue</p>
+                <p className="text-sm text-gray-800">{event.venue}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Event ID</p>
+                <p className="text-sm font-mono text-gray-800">{id?.slice(-8).toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center text-xs text-gray-500">
+              <div className="flex items-center space-x-2">
+                <Ticket className="w-4 h-4" />
+                <span>General Admission</span>
+              </div>
+              <div className="text-right">
+                <p>Issued: {new Date().toLocaleDateString()}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  </DialogContent>
+</Dialog>
     </div>
   );
 }
