@@ -2,6 +2,8 @@
 import mongoose from "mongoose";
 import Registration from "../models/Registration.js";
 import Attendance from "../models/Attendance.js";
+import Event from "../models/Event.js";
+
 
 export const scanAttendance = async (req, res) => {
   try {
@@ -39,5 +41,22 @@ export const scanAttendance = async (req, res) => {
   } catch (err) {
     console.error("❌ Attendance marking error:", err);
     res.status(500).json({ error: err.message });
+  }
+};
+/**
+ * ✅ Get all attendance records for a specific event
+ */
+export const getAttendanceByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    const attendance = await Attendance.find({ eventId });
+    res.json(attendance);
+  } catch (error) {
+    console.error("❌ Error fetching event attendance:", error);
+    res.status(500).json({ error: error.message });
   }
 };

@@ -129,47 +129,7 @@ export function AdminDashboard() {
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {[
-            {
-              title: "Total Events",
-              value: events.length,
-              color: "text-blue-600",
-              icon: <Calendar className="w-8 h-8 text-blue-500" />,
-            },
-            {
-              title: "Total Participants",
-              value: totalParticipants,
-              color: "text-green-600",
-              icon: <Users className="w-8 h-8 text-green-500" />,
-            },
-            {
-              title: "Attended",
-              value: totalAttended,
-              color: "text-purple-600",
-              icon: <BarChart3 className="w-8 h-8 text-purple-500" />,
-            },
-            {
-              title: "Certificates Issued",
-              value: certificatesIssued,
-              color: "text-orange-600",
-              icon: <Award className="w-8 h-8 text-orange-500" />,
-            },
-          ].map((stat, i) => (
-            <Card
-              key={i}
-              className="bg-white/70 backdrop-blur-sm border-white/20 shadow-sm hover:shadow-md transition"
-            >
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">{stat.title}</p>
-                  <p className={`text-2xl ${stat.color}`}>{stat.value}</p>
-                </div>
-                {stat.icon}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
 
         {/* Add Event */}
         <Link to="/admin/add-event">
