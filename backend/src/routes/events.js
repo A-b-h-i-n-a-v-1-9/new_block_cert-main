@@ -13,25 +13,19 @@ import { validateEvent } from "../utils/validator.js";
 
 const router = express.Router();
 
-// ✅ Create event
-router.post("/", authenticate, requireRole(["clubadmin", "superadmin"]), validateEvent, createEvent);
+router.post(
+  "/",
+  authenticate,
+  requireRole(["admin", "clubadmin", "superadmin"]),
+  validateEvent,
+  createEvent
+);
 
-// ✅ Get all events
 router.get("/", getEvents);
-
-// ✅ 🔥 Move this ABOVE the generic :id route
-+router.get("/check/:eventId", checkUserRegistration);
-
-// ✅ Get single event
+router.get("/check/:eventId", checkUserRegistration);
 router.get("/:id", getEventById);
-
-// ✅ Update event
 router.put("/:id", authenticate, requireRole(["clubadmin", "superadmin"]), validateEvent, updateEvent);
-
-// ✅ Delete event
 router.delete("/:id", authenticate, requireRole(["clubadmin", "superadmin"]), deleteEvent);
-
-// ✅ Register for event
 router.post("/:id/register", authenticate, registerForEvent);
 
 export default router;

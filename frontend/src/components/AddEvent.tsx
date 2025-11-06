@@ -44,42 +44,31 @@ export function AddEvent() {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  e.preventDefault();
+  setLoading(true);
+  setError('');
 
-    // Validation
-    if (!formData.title || !formData.description || !formData.date || !formData.time || 
-        !formData.venue || !formData.category) {
-      setError('Please fill in all required fields');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.maxParticipants < 1) {
-      setError('Maximum participants must be at least 1');
-      setLoading(false);
-      return;
-    }
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    try {
-      addEvent({
-        ...formData,
-        registeredCount: 0
-      });
-      
-      navigate('/admin');
-    } catch (err) {
-      setError('Failed to create event. Please try again.');
-    }
-    
+  if (!formData.title || !formData.description || !formData.date || !formData.time || !formData.venue || !formData.category) {
+    setError('Please fill in all required fields');
     setLoading(false);
-  };
+    return;
+  }
+
+  try {
+    await addEvent({
+      ...formData,
+      registeredCount: 0,
+    });
+
+    navigate('/admin');
+  } catch (err: any) {
+    setError(err.message || 'Failed to create event. Please try again.');
+  }
+
+  setLoading(false);
+};
+
 
   const generateImageUrl = (category: string) => {
     const imageMap = {
