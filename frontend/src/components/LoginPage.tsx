@@ -81,9 +81,13 @@ export function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2 mb-6">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"></div>
+          <img
+  src="https://i.imgur.gg/d8YmEE7-ChainOwl-removebg-preview.png"
+  alt="Logo"
+  className="w-8 h-8 rounded-lg object-cover"
+/>
             <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              EventHub
+              ChainOwl
             </span>
           </Link>
           <h1 className="text-3xl mb-2 text-gray-800">

@@ -9,7 +9,7 @@ import { AddEvent } from './components/AddEvent';
 import { ManageEvent } from './components/ManageEvent';
 import { ParticipantsList } from './components/ParticipantsList';
 import { Toaster } from './components/ui/sonner';
-import { MyCertificates } from "./components/MyCertificates";
+import { Profile } from './components/MyCertificates';
 import { QRScanner } from "./components/QRScanner";
 
 
@@ -23,7 +23,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/event/:id" element={<EventDetails />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/my-certificates" element={<MyCertificates />} />
+            <Route path="/profile" element={<Profile/>} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />

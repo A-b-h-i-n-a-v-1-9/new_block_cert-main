@@ -92,9 +92,13 @@ export function AdminDashboard() {
           <div className="flex justify-between items-center h-16">
             {/* Brand */}
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg"></div>
+              <img
+  src="https://i.imgur.gg/d8YmEE7-ChainOwl-removebg-preview.png"
+  alt="Logo"
+  className="w-8 h-8 rounded-lg object-cover"
+/>
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                EventHub Admin
+                ChainOwl Admin
               </span>
             </div>
 
